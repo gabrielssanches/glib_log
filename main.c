@@ -7,13 +7,26 @@
 #include <stdlib.h>
 #include <syslog.h>
 
+static gboolean arg_verbose = FALSE;
+static gchar *arg_log_level = NULL;
+
+static GOptionEntry entries[] = { 
+    { "verbose", 'v', 0, G_OPTION_ARG_NONE, &arg_verbose, "Be verbose", NULL },
+    { "log-level", 'l', 0, G_OPTION_ARG_FILENAME, &arg_log_level, "Screenshot file configuration, disables interactive mode", "<file path>" },
+    { NULL }
+};
+
+
+static GLogLevelFlags _log_level = G_LOG_LEVEL_ERROR | G_LOG_LEVEL_CRITICAL | G_LOG_LEVEL_WARNING;
+
+
 GLogWriterOutput log_writer (
     GLogLevelFlags log_level,
     const GLogField *fields,
     gsize n_fields,
     gpointer data
 ) {
-    if (log_level < G_LOG_LEVEL_MESSAGE) return G_LOG_WRITER_HANDLED;
+    if ((log_level & _log_level) == 0) return G_LOG_WRITER_HANDLED;
 
     GLogLevelFlags prio = G_LOG_LEVEL_MASK;
     const gchar *c_file = NULL;
@@ -49,6 +62,34 @@ static void test_func(void) {
 }
 
 int main(int argc, char *argv[]) {
+    GError *error = NULL;
+    GOptionContext *context;
+
+    context = g_option_context_new("- Virtual HMI");
+    g_option_context_add_main_entries(context, entries, NULL);
+    if (!g_option_context_parse(context, &argc, &argv, &error)) {
+        g_print("option parsing failed: %s\n", error->message);
+        g_print("%s\n", g_option_context_get_help(context, TRUE, NULL));
+        exit(1);
+    }   
+
+    g_printf("verbose: %s\n", arg_verbose?"True":"False");
+    g_printf("log-level: %s\n", arg_log_level);
+    
+    if (g_str_match_string("message", arg_log_level, TRUE)) {
+        _log_level |= G_LOG_LEVEL_MESSAGE;
+    }
+    if (g_str_match_string("info", arg_log_level, TRUE)) {
+        _log_level |= G_LOG_LEVEL_INFO;
+    }
+    if (g_str_match_string("debug", arg_log_level, TRUE)) {
+        _log_level |= G_LOG_LEVEL_DEBUG;
+    }
+    if (arg_verbose | g_str_match_string("all", arg_log_level, TRUE)) {
+        _log_level |= G_LOG_LEVEL_MASK;
+    }
+    g_option_context_free(context);
+
     g_log_set_fatal_mask(NULL, G_LOG_LEVEL_CRITICAL);
     g_log_set_writer_func(log_writer, NULL, NULL);
 
