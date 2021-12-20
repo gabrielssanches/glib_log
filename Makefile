@@ -2,6 +2,7 @@ all: glib_log
 
 SRC=
 SRC+=main.c
+SRC+=test_file.c
 
 GIO_FLAGS_L=$(shell pkg-config --libs gio-2.0 gio-2.0)
 GIO_FLAGS_I=$(shell pkg-config --cflags-only-I gio-2.0)
